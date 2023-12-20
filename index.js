@@ -119,7 +119,9 @@ app.put("/register", async (req, res) => {
         if (err) {
           throw err;
         }
-        res.cookie("token", token).json(userDoc);
+        res
+          .cookie("token", token, { sameSite: "none", secure: true })
+          .json(userDoc);
       }
     );
   }
@@ -146,7 +148,9 @@ app.post("/login", async (req, res) => {
           if (err) {
             throw err;
           }
-          res.cookie("token", token).json(userDoc); // Respond with user data and set token cookie
+          res
+            .cookie("token", token, { sameSite: "none", secure: true })
+            .json(userDoc); // Respond with user data and set token cookie
         }
       );
     } else {
@@ -157,7 +161,7 @@ app.post("/login", async (req, res) => {
 
 app.post("/logout", (req, res) => {
   // return empty cookie
-  res.cookie("token", "").json(true);
+  res.cookie("token", "", { sameSite: "none", secure: true }).json(true);
 });
 
 // Route to retrieve user profile using token
