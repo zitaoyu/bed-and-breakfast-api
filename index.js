@@ -21,8 +21,7 @@ const jwtSecret = process.env.JWT_SECRET;
 
 // Initialize Express app
 const app = express();
-
-app.use("/uploads", express.static(__dirname + "/uploads"));
+const PORT = process.env.PORT || 4000;
 
 // Middleware setup
 app.use(express.json()); // Parse incoming request bodies in JSON format
@@ -370,4 +369,6 @@ app.delete("/bookings", async (req, res) => {
 });
 
 // Start the server on port 4000
-app.listen(4000);
+app.listen(PORT, () => {
+  console.log(`server started on port ${PORT}`);
+});
