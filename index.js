@@ -179,10 +179,14 @@ app.get("/profile", async (req, res) => {
   if (token) {
     // Verify token and return user data if valid
     const userData = await getUserDataFromToken(token);
-    const { name, email, _id } = await User.findById(userData.id);
-    res.json({ name, email, _id });
+    if (userData) {
+      const { name, email, _id } = await User.findById(userData.id);
+      res.json({ name, email, _id });
+    } else {
+      res.status(401).json({ error: "Invalid token." });
+    }
   } else {
-    res.json({ error: "User not not logged in." });
+    res.status(401).json({ error: "User not logged in." });
   }
 });
 
