@@ -80,8 +80,8 @@ app.post("/register", async (req, res) => {
       password: bcrypt.hashSync(password, bcryptSalt), // Hash the user's password
     });
     res.json(userDoc);
-  } catch (e) {
-    res.status(422).json(e); // Handle registration error
+  } catch (error) {
+    res.status(422).json({ error }); // Handle registration error
   }
 });
 
@@ -154,8 +154,10 @@ app.post("/login", async (req, res) => {
         }
       );
     } else {
-      res.status(422).json("password is not correct."); // Handle incorrect password
+      res.status(401).json({ error: "Incorrect Password." });
     }
+  } else {
+    res.status(401).json({ error: "Incorrect Email." });
   }
 });
 
