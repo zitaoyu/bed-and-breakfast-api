@@ -73,15 +73,22 @@ app.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
-    // Create a new user in the database
-    const userDoc = await User.create({
-      name,
-      email,
-      password: bcrypt.hashSync(password, bcryptSalt), // Hash the user's password
-    });
-    res.json(userDoc);
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      res
+        .status(409)
+        .json({ error: "An account with this email already exists." });
+    } else {
+      // Create a new user in the database
+      const userDoc = await User.create({
+        name,
+        email,
+        password: bcrypt.hashSync(password, bcryptSalt), // Hash the user's password
+      });
+      res.json(userDoc);
+    }
   } catch (error) {
-    res.status(422).json({ error }); // Handle registration error
+    res.status(422).json({ error });
   }
 });
 
