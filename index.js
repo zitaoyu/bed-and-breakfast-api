@@ -1,4 +1,6 @@
 // Import required packages and modules
+const serverless = require("serverless-http");
+
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -25,12 +27,6 @@ const app = express();
 // Middleware setup
 app.use(express.json()); // Parse incoming request bodies in JSON format
 app.use(cookieParser()); // Parse cookies attached to requests
-app.use(
-  cors({
-    credentials: true, // Allows cookies to be sent from the client
-    origin: process.env.CLIENT_IP, // Whitelisted origin for CORS
-  })
-);
 
 // Connect to MongoDB database
 mongoose.connect(process.env.MONGO_URL);
