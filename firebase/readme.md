@@ -1,3 +1,11 @@
+# Install dependencies
+
+npm install -g firebase-tools
+
+# Run firebase locally
+
+firebase emulators:start
+
 # Deploy firebase function
 
 Create a firebase function
