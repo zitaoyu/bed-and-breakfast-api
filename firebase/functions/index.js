@@ -2,6 +2,7 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const express = require("express");
 const cors = require("cors");
+
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -10,8 +11,8 @@ const User = require("./models/User.js");
 const Place = require("./models/Place.js");
 const Booking = require("./models/Booking.js");
 const download = require("image-downloader");
-const fs = require("fs");
-const AWSS3 = require("@aws-sdk/client-s3");
+const uploadImageToFirebaseStorage = require("./utils/firebase-storage-upload.js");
+
 const multer = require("multer");
 const mime = require("mime-types");
 require("dotenv").config();
@@ -38,27 +39,6 @@ app.use(
 
 // Connect to MongoDB database
 mongoose.connect(process.env.MONGO_URL);
-
-const bucket = process.env.BUCKET;
-const region = process.env.AWS_REGION;
-const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY_ID;
-
-async function uploadImageToS3(path, newFilename, mimetype) {
-  const client = new AWSS3.S3Client({
-    region,
-    credentials: { accessKeyId, secretAccessKey },
-  });
-
-  const command = new AWSS3.PutObjectCommand({
-    Bucket: bucket,
-    Body: fs.readFileSync(path),
-    Key: newFilename,
-    ContentType: mimetype,
-  });
-  await client.send(command);
-  return `https://${bucket}.s3.amazonaws.com/${newFilename}`;
-}
 
 function getUserDataFromToken(token) {
   return new Promise((resolve, reject) => {
@@ -193,18 +173,20 @@ app.get("/profile", async (req, res) => {
   }
 });
 
-// TODO: use S3 instead of storing locally
 app.post("/upload-by-link", async (req, res) => {
   const { url } = req.body;
   const newName = "photo_" + Date.now() + ".jpg";
   const dest = "/tmp/" + newName;
 
   await download.image({ url, dest });
-  const S3ImageUrl = await uploadImageToS3(dest, newName, mime.lookup(dest));
+  const S3ImageUrl = await uploadImageToFirebaseStorage(
+    dest,
+    newName,
+    mime.lookup(dest)
+  );
   res.json({ url: S3ImageUrl });
 });
 
-// TODO: use S3 instead of storing locally
 const photosMiddleware = multer({ dest: "/tmp" });
 app.post("/upload", photosMiddleware.array("photos", 10), async (req, res) => {
   const uploadedFilesLinks = [];
@@ -212,7 +194,11 @@ app.post("/upload", photosMiddleware.array("photos", 10), async (req, res) => {
     const { originalname, path, mimetype } = req.files[i];
     const fileExtension = originalname.split(".").pop();
     const newName = "photo_" + Date.now() + "." + fileExtension;
-    const S3ImageUrl = await uploadImageToS3(path, newName, mimetype);
+    const S3ImageUrl = await uploadImageToFirebaseStorage(
+      path,
+      newName,
+      mimetype
+    );
     uploadedFilesLinks.push(S3ImageUrl);
   }
   res.json({ urls: uploadedFilesLinks });
