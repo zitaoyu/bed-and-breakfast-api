@@ -190,18 +190,19 @@ app.get("/profile", async (req, res) => {
   }
 });
 
-// TODO: use S3 instead of storing locally
 app.post("/upload-by-link", async (req, res) => {
   const { url } = req.body;
   const newName = "photo_" + Date.now() + ".jpg";
   const dest = "/tmp/" + newName;
-
-  await download.image({ url, dest });
-  const S3ImageUrl = await uploadImageToS3(dest, newName, mime.lookup(dest));
-  res.json({ url: S3ImageUrl });
+  try {
+    await download.image({ url, dest });
+    const S3ImageUrl = await uploadImageToS3(dest, newName, mime.lookup(dest));
+    res.json({ url: S3ImageUrl });
+  } catch (error) {
+    res.json({ error });
+  }
 });
 
-// TODO: use S3 instead of storing locally
 const photosMiddleware = multer({ dest: "/tmp" });
 app.post("/upload", photosMiddleware.array("photos", 10), async (req, res) => {
   const uploadedFilesLinks = [];

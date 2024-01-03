@@ -2,33 +2,31 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const express = require("express");
 const cors = require("cors");
-
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
+const mongoose = require("mongoose");
 const User = require("./models/User.js");
 const Place = require("./models/Place.js");
 const Booking = require("./models/Booking.js");
 const download = require("image-downloader");
-const uploadImageToFirebaseStorage = require("./utils/firebase-storage-upload.js");
-
 const multer = require("multer");
 const mime = require("mime-types");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const {
+  uploadImageToFirebaseStorage,
+} = require("./utils/firebase-storage-upload.js");
 require("dotenv").config();
 
-// Configuration
 const bcryptSalt = bcrypt.genSaltSync(12);
 const jwtSecret = process.env.JWT_SECRET;
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 4000;
 
 // Middleware setup
 app.use(express.json()); // Parse incoming request bodies in JSON format
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Parse cookies attached to requests
-
 app.use(
   cors({
     credentials: true, // Allows cookies to be sent from the client
@@ -178,30 +176,40 @@ app.post("/upload-by-link", async (req, res) => {
   const newName = "photo_" + Date.now() + ".jpg";
   const dest = "/tmp/" + newName;
 
-  await download.image({ url, dest });
-  const S3ImageUrl = await uploadImageToFirebaseStorage(
-    dest,
-    newName,
-    mime.lookup(dest)
-  );
-  res.json({ url: S3ImageUrl });
+  try {
+    await download.image({ url, dest });
+    const imageUrl = await uploadImageToFirebaseStorage(
+      dest,
+      newName,
+      mime.lookup(dest)
+    );
+    res.json({ url: imageUrl });
+  } catch (error) {
+    console.error("Error processing file upload:", error);
+    res.status(500).json({ error: "File upload failed." });
+  }
 });
 
 const photosMiddleware = multer({ dest: "/tmp" });
 app.post("/upload", photosMiddleware.array("photos", 10), async (req, res) => {
-  const uploadedFilesLinks = [];
-  for (let i = 0; i < req.files.length; i++) {
-    const { originalname, path, mimetype } = req.files[i];
-    const fileExtension = originalname.split(".").pop();
-    const newName = "photo_" + Date.now() + "." + fileExtension;
-    const S3ImageUrl = await uploadImageToFirebaseStorage(
-      path,
-      newName,
-      mimetype
-    );
-    uploadedFilesLinks.push(S3ImageUrl);
+  try {
+    const imageUrls = [];
+    for (let i = 0; i < req.files.length; i++) {
+      const { originalname, path, mimetype } = req.files[i];
+      const fileExtension = originalname.split(".").pop();
+      const newName = "photo_" + Date.now() + "." + fileExtension;
+      const imageUrl = await uploadImageToFirebaseStorage(
+        path,
+        newName,
+        mimetype
+      );
+      imageUrls.push(imageUrl);
+    }
+    res.json({ urls: imageUrls });
+  } catch (error) {
+    console.error("Error processing file upload:", error);
+    res.status(500).json({ error: "File upload failed" });
   }
-  res.json({ urls: uploadedFilesLinks });
 });
 
 app.get("/places", async (req, res) => {
@@ -378,4 +386,11 @@ app.delete("/bookings", async (req, res) => {
   }
 });
 
-exports.bnbAPI = onRequest(app);
+const runLocally = false;
+if (runLocally) {
+  app.listen(4000, () => {
+    console.log(`server started on port ${4000}`);
+  });
+} else {
+  exports.bnbAPI = onRequest(app);
+}
